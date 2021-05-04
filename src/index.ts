@@ -1,6 +1,7 @@
 import path from "path";
 import prettier from "prettier";
 import parserTypescript from "prettier/parser-typescript";
+import load from "./load";
 import { swaggerVersion } from "./utils";
 import { transformAll } from "./transform/index";
 import { OpenAPI2, OpenAPI3, SchemaObject, SwaggerToTSOptions } from "./types";
@@ -14,16 +15,19 @@ export const WARNING_MESSAGE = `/**
 
 `;
 
-export default function openapiTS(
-  schema: OpenAPI2 | OpenAPI3 | Record<string, SchemaObject>,
+export default async function openapiTS(
+  schema: string | OpenAPI2 | OpenAPI3 | Record<string, SchemaObject>,
   options?: SwaggerToTSOptions
-): string {
-  // 1. determine version
-  const version = (options && options.version) || swaggerVersion(schema as OpenAPI2 | OpenAPI3);
+): Promise<string> {
+  // 1. load schema
+  const schemaObj = await load(schema, { auth: options?.auth, silent: options?.silent || false });
 
-  // 2. generate output
+  // 2. determine version
+  const version = options?.version || swaggerVersion(schemaObj as OpenAPI2 | OpenAPI3);
+
+  // 3. generate output
   let output = `${WARNING_MESSAGE}
-  ${transformAll(schema, {
+  ${transformAll(schemaObj, {
     formatter: options && typeof options.formatter === "function" ? options.formatter : undefined,
     immutableTypes: (options && options.immutableTypes) || false,
     rawSchema: options && options.rawSchema,
@@ -31,7 +35,7 @@ export default function openapiTS(
   })}
 `;
 
-  // 3. Prettify output
+  // 4. Prettify output
   let prettierOptions: prettier.Options = {
     parser: "typescript",
     plugins: [parserTypescript],

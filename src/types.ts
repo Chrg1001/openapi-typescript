@@ -111,6 +111,8 @@ export interface SchemaObject {
 export type SchemaFormatter = (schemaObj: SchemaObject) => string | undefined;
 
 export interface SwaggerToTSOptions {
+  /** (optional) Specify auth if using openapi-typescript to fetch URL */
+  auth?: string;
   /** Specify a formatter */
   formatter?: SchemaFormatter;
   /** Generates immutable types (readonly properties and readonly array) */
@@ -119,6 +121,8 @@ export interface SwaggerToTSOptions {
   prettierConfig?: string;
   /** (optional) Parsing input document as raw schema rather than OpenAPI document */
   rawSchema?: boolean;
+  /** (optional) Should logging be suppressed? (necessary for STDOUT) */
+  silent?: boolean;
   /** (optional) OpenAPI version. Must be present if parsing raw schema */
   version?: number;
 }
