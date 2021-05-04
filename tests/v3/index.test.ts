@@ -17,7 +17,7 @@ describe("cli", () => {
       expect(generated).toBe(expected);
     });
 
-    it(`reads ${schema} spec (v3) from file (immutable types)`, () => {
+    it(`reads ${schema} spec (v3) from file (immutable)`, () => {
       const output = schema.replace(".yaml", ".immutable.ts");
 
       execSync(

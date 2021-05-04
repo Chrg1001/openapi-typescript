@@ -7,6 +7,7 @@ const transform = (schema: any, operations: any = { operations: {}, globalParame
       globalParameters,
       immutableTypes: operations.immutableTypes,
       operations,
+      rawSchema: false,
       version: 3,
     })}\n}`.trim(),
     {
@@ -50,7 +51,7 @@ describe("transformPathsObj", () => {
                     properties: {
                       results: {
                         type: "array",
-                        items: { $ref: "#/components/schemas/SearchResult" },
+                        items: { $ref: 'components["schemas"]["SearchResult"]' },
                       },
                       total: { type: "integer" },
                     },
@@ -63,7 +64,7 @@ describe("transformPathsObj", () => {
             404: {
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                  schema: { $ref: 'components["schemas"]["ErrorResponse"]' },
                 },
               },
             },
@@ -299,7 +300,7 @@ describe("transformPathsObj", () => {
         },
         delete: {
           operationId: "testsDelete",
-          requestBody: { $ref: "#/components/schemas/Pet" },
+          requestBody: { $ref: 'components["schemas"]["Pet"]' },
         },
       },
     };
@@ -359,9 +360,9 @@ describe("transformPathsObj", () => {
     const refsSchema = {
       "/some/path": {
         get: {
-          parameters: [{ $ref: "#/components/parameters/param1" }, { $ref: "#/components/parameters/param2" }],
+          parameters: [{ $ref: 'components["parameters"]["param1"]' }, { $ref: 'components["parameters"]["param2"]' }],
           responses: {
-            400: { $ref: "#/components/responses/400BadRequest" },
+            400: { $ref: 'components["responses"]["400BadRequest"]' },
           },
         },
       },

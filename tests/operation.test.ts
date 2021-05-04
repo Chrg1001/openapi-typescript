@@ -1,6 +1,6 @@
 import prettier from "prettier";
 import { transformOperationObj } from "../src/transform/operation";
-import { transformRequestBodies } from "../src/transform/responses";
+import { transformRequestBodies } from "../src/transform/request";
 
 describe("requestBody", () => {
   it("basic", () => {
@@ -8,10 +8,10 @@ describe("requestBody", () => {
       requestBody: {
         content: {
           "application/json": {
-            schema: { $ref: "#/components/schemas/Pet" },
+            schema: { $ref: 'components["schemas"]["Pet"]' },
           },
           "application/xml": {
-            schema: { $ref: "#/components/schemas/Pet" },
+            schema: { $ref: 'components["schemas"]["Pet"]' },
           },
         },
       },
@@ -20,6 +20,7 @@ describe("requestBody", () => {
     expect(
       transformOperationObj(schema, {
         immutableTypes: false,
+        rawSchema: false,
         version: 3,
       }).trim()
     ).toBe(`requestBody: {
@@ -32,6 +33,7 @@ describe("requestBody", () => {
     expect(
       transformOperationObj(schema, {
         immutableTypes: true,
+        rawSchema: false,
         version: 3,
       }).trim()
     ).toBe(`readonly requestBody: {
@@ -44,12 +46,13 @@ describe("requestBody", () => {
 
   it("ref", () => {
     const schema = {
-      requestBody: { $ref: "#/components/requestBodies/Request" },
+      requestBody: { $ref: 'components["requestBodies"]["Request"]' },
     };
 
     expect(
       transformOperationObj(schema, {
         immutableTypes: false,
+        rawSchema: false,
         version: 3,
       }).trim()
     ).toBe(`requestBody: components["requestBodies"]["Request"];`);
@@ -57,6 +60,7 @@ describe("requestBody", () => {
     expect(
       transformOperationObj(schema, {
         immutableTypes: true,
+        rawSchema: false,
         version: 3,
       }).trim()
     ).toBe(`readonly requestBody: components["requestBodies"]["Request"];`);
@@ -85,6 +89,7 @@ describe("requestBodies", () => {
 
     const output = transformRequestBodies(schema, {
       immutableTypes: false,
+      rawSchema: false,
       version: 2,
     }).trim();
 
@@ -103,6 +108,7 @@ describe("requestBodies", () => {
 
     const outputImmutable = transformRequestBodies(schema, {
       immutableTypes: true,
+      rawSchema: false,
       version: 2,
     }).trim();
 
@@ -139,6 +145,7 @@ describe("requestBodies", () => {
 
     const output = transformRequestBodies(schema, {
       immutableTypes: false,
+      rawSchema: false,
       version: 3,
     }).trim();
 
@@ -157,6 +164,7 @@ describe("requestBodies", () => {
 
     const outputImmutable = transformRequestBodies(schema, {
       immutableTypes: true,
+      rawSchema: false,
       version: 3,
     }).trim();
 
@@ -193,6 +201,7 @@ describe("parameters", () => {
         {
           version: 3,
           immutableTypes: false,
+          rawSchema: false,
           pathItem: {},
         }
       ).trim()
@@ -211,6 +220,7 @@ describe("parameters", () => {
         {
           version: 3,
           immutableTypes: false,
+          rawSchema: false,
           pathItem: {
             parameters: [
               {
@@ -256,6 +266,7 @@ describe("parameters", () => {
         {
           version: 3,
           immutableTypes: false,
+          rawSchema: false,
           pathItem: {
             parameters: [
               {

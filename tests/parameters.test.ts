@@ -3,7 +3,7 @@ import { transformParametersArray } from "../src/transform/parameters";
 describe("transformParametersArray()", () => {
   describe("v2", () => {
     it("basic", () => {
-      const basicSchema = [
+      const basicSchema: any = [
         {
           description: "Specifies which fields in the response should be expanded.",
           in: "query",
@@ -19,8 +19,9 @@ describe("transformParametersArray()", () => {
       ];
 
       expect(
-        transformParametersArray(basicSchema as any, {
+        transformParametersArray(basicSchema, {
           immutableTypes: false,
+          rawSchema: false,
           version: 2,
         }).trim()
       ).toBe(
@@ -37,8 +38,9 @@ describe("transformParametersArray()", () => {
       );
 
       expect(
-        transformParametersArray(basicSchema as any, {
+        transformParametersArray(basicSchema, {
           immutableTypes: true,
+          rawSchema: false,
           version: 2,
         }).trim()
       ).toBe(
@@ -57,9 +59,9 @@ describe("transformParametersArray()", () => {
 
     it("$ref", () => {
       const refSchema = [
-        { $ref: "#/parameters/per_page" },
-        { $ref: "#/parameters/page" },
-        { $ref: "#/parameters/since" },
+        { $ref: 'parameters["per_page"]' },
+        { $ref: 'parameters["page"]' },
+        { $ref: 'parameters["since"]' },
       ];
 
       expect(
@@ -70,6 +72,7 @@ describe("transformParametersArray()", () => {
             since: { in: "query", name: "since", type: "string" },
           },
           immutableTypes: false,
+          rawSchema: false,
           version: 2,
         }).trim()
       ).toBe(`query: {
@@ -86,6 +89,7 @@ describe("transformParametersArray()", () => {
             since: { in: "query", name: "since", type: "string" },
           },
           immutableTypes: true,
+          rawSchema: false,
           version: 2,
         }).trim()
       ).toBe(`readonly query: {
@@ -98,7 +102,7 @@ describe("transformParametersArray()", () => {
 
   describe("v3", () => {
     it("basic", () => {
-      const basicSchema = [
+      const basicSchema: any = [
         {
           description: "Specifies which fields in the response should be expanded.",
           in: "query",
@@ -122,8 +126,9 @@ describe("transformParametersArray()", () => {
       ];
 
       expect(
-        transformParametersArray(basicSchema as any, {
+        transformParametersArray(basicSchema, {
           immutableTypes: false,
+          rawSchema: false,
           version: 3,
         }).trim()
       ).toBe(
@@ -137,8 +142,9 @@ describe("transformParametersArray()", () => {
       );
 
       expect(
-        transformParametersArray(basicSchema as any, {
+        transformParametersArray(basicSchema, {
           immutableTypes: true,
+          rawSchema: false,
           version: 3,
         }).trim()
       ).toBe(
@@ -154,9 +160,9 @@ describe("transformParametersArray()", () => {
 
     it("$ref", () => {
       const refSchema = [
-        { $ref: "#/components/parameters/per_page" },
-        { $ref: "#/components/parameters/page" },
-        { $ref: "#/components/parameters/since" },
+        { $ref: 'components["parameters"]["per_page"]' },
+        { $ref: 'components["parameters"]["page"]' },
+        { $ref: 'components["parameters"]["since"]' },
       ];
 
       expect(
@@ -167,6 +173,7 @@ describe("transformParametersArray()", () => {
             since: { in: "query", name: "since" },
           },
           immutableTypes: false,
+          rawSchema: false,
           version: 3,
         }).trim()
       ).toBe(`query: {
@@ -183,6 +190,7 @@ describe("transformParametersArray()", () => {
             since: { in: "query", name: "since" },
           },
           immutableTypes: true,
+          rawSchema: false,
           version: 3,
         }).trim()
       ).toBe(`readonly query: {
@@ -193,14 +201,15 @@ describe("transformParametersArray()", () => {
     });
 
     it("nullable", () => {
-      const schema = [
+      const schema: any = [
         { in: "query", name: "nullableString", schema: { type: "string", nullable: true } },
         { in: "query", name: "nullableNum", schema: { type: "number", nullable: true } },
       ];
 
       expect(
-        transformParametersArray(schema as any, {
+        transformParametersArray(schema, {
           immutableTypes: false,
+          rawSchema: false,
           version: 3,
         }).trim()
       ).toBe(`query: {

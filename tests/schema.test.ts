@@ -4,8 +4,12 @@
 
 import { transformSchemaObj } from "../src/transform/schema";
 
-function transform(schemaObject: any, immutableTypes = false, version = 2): string {
-  return transformSchemaObj(schemaObject, { immutableTypes, version }).trim();
+function transform(schemaObject: any, { immutableTypes = false } = {}): string {
+  return transformSchemaObj(schemaObject, {
+    immutableTypes,
+    rawSchema: false,
+    version: 2,
+  } as any).trim();
 }
 
 describe("SchemaObject", () => {
@@ -33,7 +37,7 @@ describe("SchemaObject", () => {
           type: "object",
           properties: {
             object: {
-              properties: { string: { type: "string" }, number: { $ref: "#/components/schemas/object_ref" } },
+              properties: { string: { type: "string" }, number: { $ref: 'components["schemas"]["object_ref"]' } },
               type: "object",
             },
           },
@@ -46,12 +50,12 @@ describe("SchemaObject", () => {
             type: "object",
             properties: {
               object: {
-                properties: { string: { type: "string" }, number: { $ref: "#/components/schemas/object_ref" } },
+                properties: { string: { type: "string" }, number: { $ref: 'components["schemas"]["object_ref"]' } },
                 type: "object",
               },
             },
           },
-          true
+          { immutableTypes: true }
         )
       ).toBe(
         `{\nreadonly "object"?: {\nreadonly "string"?: string;\nreadonly "number"?: components["schemas"]["object_ref"];\n\n};\n\n}`
@@ -60,27 +64,30 @@ describe("SchemaObject", () => {
       // unknown
       expect(transform({ type: "object" })).toBe(`{ [key: string]: any }`);
 
-      expect(transform({ type: "object" }, true)).toBe(`{ readonly [key: string]: any }`);
+      expect(transform({ type: "object" }, { immutableTypes: true })).toBe(`{ readonly [key: string]: any }`);
 
       // empty
       expect(transform({})).toBe(`{ [key: string]: any }`);
 
-      expect(transform({}, true)).toBe(`{ readonly [key: string]: any }`);
+      expect(transform({}, { immutableTypes: true })).toBe(`{ readonly [key: string]: any }`);
 
       // nullable
       expect(transform({ type: "object", properties: { string: { type: "string" } }, nullable: true })).toBe(
         `({\n"string"?: string;\n\n}) | null`
       );
 
-      expect(transform({ type: "object", properties: { string: { type: "string" } }, nullable: true }, true)).toBe(
-        `({\nreadonly "string"?: string;\n\n}) | null`
-      );
+      expect(
+        transform(
+          { type: "object", properties: { string: { type: "string" } }, nullable: true },
+          { immutableTypes: true }
+        )
+      ).toBe(`({\nreadonly "string"?: string;\n\n}) | null`);
 
       // required
       expect(
         transform({
           properties: { required: { type: "string" }, optional: { type: "boolean" } },
-          required: ["required"],
+          required: new Set(["required"]),
           type: "object",
         })
       ).toBe(`{\n"required": string;\n"optional"?: boolean;\n\n}`);
@@ -89,10 +96,10 @@ describe("SchemaObject", () => {
         transform(
           {
             properties: { required: { type: "string" }, optional: { type: "boolean" } },
-            required: ["required"],
+            required: new Set(["required"]),
             type: "object",
           },
-          true
+          { immutableTypes: true }
         )
       ).toBe(`{\nreadonly "required": string;\nreadonly "optional"?: boolean;\n\n}`);
     });
@@ -103,9 +110,15 @@ describe("SchemaObject", () => {
       expect(transform({ type: "array", items: { type: "number" } })).toBe(`(number)[]`);
       expect(transform({ type: "array", items: { type: "boolean" } })).toBe(`(boolean)[]`);
 
-      expect(transform({ type: "array", items: { type: "string" } }, true)).toBe(`readonly (string)[]`);
-      expect(transform({ type: "array", items: { type: "number" } }, true)).toBe(`readonly (number)[]`);
-      expect(transform({ type: "array", items: { type: "boolean" } }, true)).toBe(`readonly (boolean)[]`);
+      expect(transform({ type: "array", items: { type: "string" } }, { immutableTypes: true })).toBe(
+        `readonly (string)[]`
+      );
+      expect(transform({ type: "array", items: { type: "number" } }, { immutableTypes: true })).toBe(
+        `readonly (number)[]`
+      );
+      expect(transform({ type: "array", items: { type: "boolean" } }, { immutableTypes: true })).toBe(
+        `readonly (boolean)[]`
+      );
 
       // nested
       expect(
@@ -115,7 +128,7 @@ describe("SchemaObject", () => {
       expect(
         transform(
           { type: "array", items: { type: "array", items: { type: "array", items: { type: "number" } } } },
-          true
+          { immutableTypes: true }
         )
       ).toBe(`readonly (readonly (readonly (number)[])[])[]`);
 
@@ -124,39 +137,39 @@ describe("SchemaObject", () => {
         `(('chocolate') | ('vanilla'))[]`
       );
 
-      expect(transform({ type: "array", items: { enum: ["chocolate", "vanilla"] } }, true)).toBe(
+      expect(transform({ type: "array", items: { enum: ["chocolate", "vanilla"] } }, { immutableTypes: true })).toBe(
         `readonly (('chocolate') | ('vanilla'))[]`
       );
 
       // $ref
-      expect(transform({ type: "array", items: { $ref: "#/components/schemas/ArrayItem" } })).toBe(
+      expect(transform({ type: "array", items: { $ref: 'components["schemas"]["ArrayItem"]' } })).toBe(
         `(components["schemas"]["ArrayItem"])[]`
       );
 
-      expect(transform({ type: "array", items: { $ref: "#/components/schemas/ArrayItem" } }, true)).toBe(
-        `readonly (components["schemas"]["ArrayItem"])[]`
-      );
+      expect(
+        transform({ type: "array", items: { $ref: 'components["schemas"]["ArrayItem"]' } }, { immutableTypes: true })
+      ).toBe(`readonly (components["schemas"]["ArrayItem"])[]`);
 
       // inferred
-      expect(transform({ items: { $ref: "#/components/schemas/ArrayItem" } })).toBe(
+      expect(transform({ items: { $ref: 'components["schemas"]["ArrayItem"]' } })).toBe(
         `(components["schemas"]["ArrayItem"])[]`
       );
 
-      expect(transform({ items: { $ref: "#/components/schemas/ArrayItem" } }, true)).toBe(
+      expect(transform({ items: { $ref: 'components["schemas"]["ArrayItem"]' } }, { immutableTypes: true })).toBe(
         `readonly (components["schemas"]["ArrayItem"])[]`
       );
 
       // tuple
       expect(transform({ type: "array", items: [{ type: "string" }, { type: "number" }] })).toBe(`[string, number]`);
 
-      expect(transform({ type: "array", items: [{ type: "string" }, { type: "number" }] }, true)).toBe(
-        `readonly [string, number]`
-      );
+      expect(
+        transform({ type: "array", items: [{ type: "string" }, { type: "number" }] }, { immutableTypes: true })
+      ).toBe(`readonly [string, number]`);
 
       // nullable
       expect(transform({ type: "array", items: { type: "string" }, nullable: true })).toBe(`((string)[]) | null`);
 
-      expect(transform({ type: "array", items: { type: "string" }, nullable: true }, true)).toBe(
+      expect(transform({ type: "array", items: { type: "string" }, nullable: true }, { immutableTypes: true })).toBe(
         `(readonly (string)[]) | null`
       );
     });
@@ -219,17 +232,6 @@ describe("SchemaObject", () => {
 }`
       );
     });
-
-    it("$ref", () => {
-      expect(transform({ $ref: "#/components/parameters/ReferenceObject" })).toBe(
-        `components["parameters"]["ReferenceObject"]`
-      );
-    });
-
-    // TODO: allow import later
-    it("$ref (external)", () => {
-      expect(transform({ $ref: "./external.yaml" })).toBe(`any`);
-    });
   });
 
   describe("advanced", () => {
@@ -244,7 +246,7 @@ describe("SchemaObject", () => {
       expect(transform({ additionalProperties: { type: "string" } })).toBe(`{ [key: string]: string; }`);
 
       // $ref
-      expect(transform({ additionalProperties: { $ref: "#/definitions/Message" } })).toBe(
+      expect(transform({ additionalProperties: { $ref: 'definitions["Message"]' } })).toBe(
         `{ [key: string]: definitions["Message"]; }`
       );
     });
@@ -253,7 +255,7 @@ describe("SchemaObject", () => {
       expect(
         transform({
           allOf: [
-            { $ref: "#/components/schemas/base" },
+            { $ref: 'components["schemas"]["base"]' },
             { properties: { string: { type: "string" } }, type: "object" },
           ],
           properties: { password: { type: "string" } },
@@ -266,9 +268,9 @@ describe("SchemaObject", () => {
       expect(
         transform({
           anyOf: [
-            { $ref: "#/components/schemas/StringType" },
-            { $ref: "#/components/schemas/NumberType" },
-            { $ref: "#/components/schemas/BooleanType" },
+            { $ref: 'components["schemas"]["StringType"]' },
+            { $ref: 'components["schemas"]["NumberType"]' },
+            { $ref: 'components["schemas"]["BooleanType"]' },
           ],
         })
       ).toBe(
@@ -279,7 +281,7 @@ describe("SchemaObject", () => {
     it("oneOf", () => {
       // standard
       expect(
-        transform({ oneOf: [{ type: "string" }, { type: "number" }, { $ref: "#/components/schemas/one_of_ref" }] })
+        transform({ oneOf: [{ type: "string" }, { type: "number" }, { $ref: 'components["schemas"]["one_of_ref"]' }] })
       ).toBe(`(string) | (number) | (components["schemas"]["one_of_ref"])`);
 
       // additionalProperties
@@ -301,8 +303,8 @@ describe("SchemaObject", () => {
             },
           },
           oneOf: [
-            { properties: { b: { type: "string" } }, required: ["b"] },
-            { properties: { c: { type: "string" } }, required: ["c"] },
+            { properties: { b: { type: "string" } }, required: new Set(["b"]) },
+            { properties: { c: { type: "string" } }, required: new Set(["c"]) },
           ],
         })
       ).toBe(`(({
@@ -326,8 +328,8 @@ describe("SchemaObject", () => {
             },
           },
           anyOf: [
-            { properties: { b: { type: "string" } }, required: ["b"] },
-            { properties: { c: { type: "string" } }, required: ["c"] },
+            { properties: { b: { type: "string" } }, required: new Set(["b"]) },
+            { properties: { c: { type: "string" } }, required: new Set(["c"]) },
           ],
         })
       ).toBe(`((Partial<{

@@ -1,10 +1,11 @@
 import path from "path";
+import { bold, yellow } from "kleur";
 import prettier from "prettier";
 import parserTypescript from "prettier/parser-typescript";
-import load from "./load";
+import load, { resolveSchema } from "./load";
 import { swaggerVersion } from "./utils";
 import { transformAll } from "./transform/index";
-import { OpenAPI2, OpenAPI3, SchemaObject, SwaggerToTSOptions } from "./types";
+import { GlobalContext, OpenAPI2, OpenAPI3, SchemaObject, SwaggerToTSOptions } from "./types";
 export * from "./types"; // expose all types to consumers
 
 export const WARNING_MESSAGE = `/**
@@ -17,32 +18,71 @@ export const WARNING_MESSAGE = `/**
 
 export default async function openapiTS(
   schema: string | OpenAPI2 | OpenAPI3 | Record<string, SchemaObject>,
-  options?: SwaggerToTSOptions
+  options: SwaggerToTSOptions = {} as any
 ): Promise<string> {
-  // 1. load schema
-  const schemaObj = await load(schema, { auth: options?.auth, silent: options?.silent || false });
-
-  // 2. determine version
-  const version = options?.version || swaggerVersion(schemaObj as OpenAPI2 | OpenAPI3);
-
-  // 3. generate output
-  let output = `${WARNING_MESSAGE}
-  ${transformAll(schemaObj, {
+  const ctx: GlobalContext = {
+    auth: options.auth,
     formatter: options && typeof options.formatter === "function" ? options.formatter : undefined,
-    immutableTypes: (options && options.immutableTypes) || false,
-    rawSchema: options && options.rawSchema,
-    version,
-  })}
-`;
+    immutableTypes: options.immutableTypes || false,
+    rawSchema: options.rawSchema || false,
+    version: options.version || 3,
+  } as any;
 
-  // 4. Prettify output
+  // note: we may be loading many large schemas into memory at once; take care to reuse references without cloning
+
+  // 1. load schema
+  let rootSchema: Record<string, any> = {};
+  let external: Record<string, Record<string, any>> = {};
+  if (typeof schema === "string") {
+    const schemaURL = resolveSchema(schema);
+    if (options.silent !== true) console.log(yellow(`🔭 Loading spec from ${bold(schemaURL.href)}…`));
+    const schemas: Record<string, Record<string, any>> = {};
+    await load(schemaURL, { ...ctx, schemas });
+    for (const k of Object.keys(schemas)) {
+      if (k === schemaURL.href) {
+        rootSchema = schemas[k];
+      } else {
+        external[k] = schemas[k];
+      }
+    }
+  } else {
+    rootSchema = schema;
+  }
+
+  // 2. generate raw output
+  let output = WARNING_MESSAGE;
+
+  // 2a. root schema
+  if (!options?.version && !ctx.rawSchema) ctx.version = swaggerVersion(rootSchema as any); // note: root version cascades down to all subschemas
+  const rootTypes = transformAll(rootSchema, { ...ctx });
+  for (const k of Object.keys(rootTypes)) {
+    if (typeof rootTypes[k] === "string") {
+      output += `export interface ${k} {\n  ${rootTypes[k]}\n}\n\n`;
+    }
+  }
+
+  // 2b. external schemas (subschemas)
+  output += `export interface external {\n`;
+  const externalKeys = Object.keys(external);
+  externalKeys.sort((a, b) => a.localeCompare(b, "en", { numeric: true })); // sort external keys because they may have resolved in a different order each time
+  for (const subschemaURL of externalKeys) {
+    output += `  "${subschemaURL}": {\n`;
+    const subschemaTypes = transformAll(external[subschemaURL], { ...ctx, namespace: subschemaURL });
+    for (const k of Object.keys(subschemaTypes)) {
+      output += `    "${k}": {\n      ${subschemaTypes[k]}\n    }\n`;
+    }
+    output += `  }\n`;
+  }
+  output += `}\n\n`;
+
+  // 3. Prettify
   let prettierOptions: prettier.Options = {
     parser: "typescript",
     plugins: [parserTypescript],
   };
   if (options && options.prettierConfig) {
     try {
-      const userOptions = prettier.resolveConfig.sync(path.resolve(process.cwd(), options.prettierConfig));
+      const userOptions = await prettier.resolveConfig(path.resolve(process.cwd(), options.prettierConfig));
       prettierOptions = {
         ...(userOptions || {}),
         ...prettierOptions,
